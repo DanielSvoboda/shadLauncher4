@@ -4,8 +4,9 @@ version = 1
 path = [
     "REUSE.toml",
     "README.md",
+	"src/qt_ui/settings_dialog.ui"
 ]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "shadLauncher 4 Project Project"
+SPDX-FileCopyrightText = "shadLauncher4 Project"
 SPDX-License-Identifier = "GPL-2.0-or-later"
 

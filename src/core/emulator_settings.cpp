@@ -16,7 +16,7 @@ namespace nlohmann {
 template <>
 struct adl_serializer<std::filesystem::path> {
     static void to_json(json& j, const std::filesystem::path& p) {
-        j = p.u8string();
+        j = p.string();
     }
     static void from_json(const json& j, std::filesystem::path& p) {
         p = j.get<std::string>();
@@ -41,7 +41,7 @@ void EmulatorSettings::PrintChangedSummary(const std::vector<std::string>& chang
 // ctor/dtor + singleton
 // --------------------
 EmulatorSettings::EmulatorSettings() {
-    Load();
+    // Load();
 }
 EmulatorSettings::~EmulatorSettings() {
     Save();
@@ -76,6 +76,10 @@ std::vector<std::filesystem::path> EmulatorSettings::GetGameInstallDirs() const 
         if (d.enabled)
             out.push_back(d.path);
     return out;
+}
+
+const std::vector<GameInstallDir>& EmulatorSettings::GetAllGameInstallDirs() const {
+    return m_general.install_dirs.value;
 }
 
 void EmulatorSettings::SetAllGameInstallDirs(const std::vector<GameInstallDir>& dirs) {
@@ -293,9 +297,11 @@ bool EmulatorSettings::Load(const std::string& serial) {
             if (gj.contains("Users"))
                 m_userManager.GetUsers() = gj.at("Users").get<Users>();
         } else {
+            SetDefaultValues();
             // ensure a default user exists
             if (m_userManager.GetUsers().user.empty())
                 m_userManager.GetUsers().user = m_userManager.CreateDefaultUser();
+            Save();
         }
 
         // Load per-game overrides and apply
@@ -344,7 +350,7 @@ bool EmulatorSettings::Load(const std::string& serial) {
     }
 }
 
-void EmulatorSettings::setDefaultValues() {
+void EmulatorSettings::SetDefaultValues() {
     m_general = GeneralSettings{};
     m_debug = DebugSettings{};
     m_input = InputSettings{};

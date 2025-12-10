@@ -4,6 +4,7 @@ version = 1
 path = [
     "REUSE.toml",
     "README.md",
+    "crowdin.yml",
     "src/qt_ui/settings_dialog.ui",
     "src/qt_ui/game_install_dialog.ui"
     

@@ -1,0 +1,22 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/shadLauncher4.ico</file>
+        <file>images/grid.png</file>
+        <file>images/list.png</file>
+        <file>images/refresh.png</file>
+        <file>images/play.png</file>
+        <file>images/stop.png</file>
+        <file>images/settings.png</file>
+        <file>images/fullscreen.png</file>
+        <file>images/controllers.png</file>
+        <file>images/restart.png</file>
+        <file>images/pause.png</file>
+        <file>images/flag_jp.png</file>
+        <file>images/flag_eu.png</file>
+        <file>images/flag_unk.png</file>
+        <file>images/flag_us.png</file>
+        <file>images/flag_world.png</file>
+        <file>images/flag_china.png</file>
+        <file>images/shadLauncher4.png</file>
+    </qresource>
+</RCC>

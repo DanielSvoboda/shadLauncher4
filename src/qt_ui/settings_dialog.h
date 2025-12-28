@@ -8,6 +8,7 @@
 #include <QSlider>
 
 #include <memory>
+#include "core/emulator_settings.h"
 
 class GUISettings;
 class EmulatorSettings;
@@ -50,4 +51,28 @@ private:
     void HandleButtonBox();
     void ApplyValuesToBackend();
     void PopulateComboBoxes();
+
+    const QMap<QString, HideCursorState> cursorStateMap = {{tr("Never"), HideCursorState::Never},
+                                                           {tr("Idle"), HideCursorState::Idle},
+                                                           {tr("Always"), HideCursorState::Always}};
+
+    const QMap<QString, UsbDevice> usbDeviceMap = {
+        {tr("Real USB Device"), UsbDevice::Real},
+        {tr("Skylander Portal"), UsbDevice::SkylanderPortal},
+        {tr("Infinity Base"), UsbDevice::InfinityBase},
+        {tr("Dimensions Toypad"), UsbDevice::DimensionsToypad}};
+
+    const QMap<QString, QString> presentModeMap = {{tr("Mailbox (Vsync)"), "Mailbox"},
+                                                   {tr("Fifo (Vsync)"), "Fifo"},
+                                                   {tr("Immediate (No Vsync)"), "Immediate"}};
+
+    const QMap<QString, QString> screenModeMap = {
+        {tr("Fullscreen (Borderless)"), "Fullscreen (Borderless)"},
+        {tr("Windowed"), "Windowed"},
+        {tr("Fullscreen"), "Fullscreen"}};
+
+    const QMap<QString, QString> micMap = {{tr("None"), "None"},
+                                           {tr("Default Device"), "Default Device"}};
+
+    const QMap<QString, QString> logTypeMap = {{tr("async"), "async"}, {tr("sync"), "sync"}};
 };

@@ -5,14 +5,14 @@
 #include <QtWidgets>
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_init.h>
-// #include <VulkanDeviceLib.h>
-
+#include "VulkanDeviceLib.h"
 #include "background_music_player.h"
 #include "common/path_util.h"
 #include "core/emulator_settings.h"
 #include "game_info.h"
 #include "gui_application.h"
 #include "gui_settings.h"
+#include "log_presets_dialog.h"
 #include "settings_dialog.h"
 #include "settings_dialog_helper_texts.h"
 #include "ui_settings_dialog.h"
@@ -251,7 +251,7 @@ void SettingsDialog::OtherConnections() {
     // ------------------ General tab --------------------------------------------------------
     connect(ui->horizontalVolumeSlider, &QSlider::valueChanged, [this](int value) {
         ui->volumeText->setText(QString("%1%").arg(value));
-        // TODO: ingame volume adjustment with IPC
+        // m_ipc_client->adjustVol(value, is_game_specific); pending IPC
     });
 
     connect(ui->OpenCustomTrophyLocationButton, &QPushButton::clicked, this, []() {
@@ -268,6 +268,52 @@ void SettingsDialog::OtherConnections() {
     // ------------------ Gui tab --------------------------------------------------------
     connect(ui->BGMVolumeSlider, &QSlider::valueChanged, this,
             [](int value) { BackgroundMusicPlayer::getInstance().SetVolume(value); });
+
+    // ------------------ Graphics tab --------------------------------------------------------
+    connect(ui->RCASSlider, &QSlider::valueChanged, [this](int value) {
+        QString RCASValue = QString::number(value / 1000.0, 'f', 3);
+        ui->RCASValue->setText(RCASValue);
+    });
+
+    /* Pending IPC
+        connect(ui->RCASSlider, &QSlider::valueChanged, this,
+                [this](int value) { m_ipc_client->setRcasAttenuation(value); });
+        connect(ui->FSRCheckBox, &QCheckBox::checkStateChanged, this,
+                [this](Qt::CheckState state) { m_ipc_client->setFsr(state); });
+
+        connect(ui->RCASCheckBox, &QCheckBox::checkStateChanged, this,
+                [this](Qt::CheckState state) { m_ipc_client->setRcas(state); });
+    */
+
+    // ------------------ Input tab --------------------------------------------------------
+    connect(ui->hideCursorComboBox, &QComboBox::currentTextChanged, this, [this](QString text) {
+        if (text == tr("Idle")) {
+            ui->idleTimeoutGroupBox->show();
+        } else {
+            ui->idleTimeoutGroupBox->hide();
+        }
+    });
+
+    // ------------------ Log tab --------------------------------------------------------
+    connect(ui->OpenLogLocationButton, &QPushButton::clicked, this, []() {
+        QString userPath;
+        Common::FS::PathToQString(userPath, Common::FS::GetUserPath(Common::FS::PathType::LogDir));
+        QDesktopServices::openUrl(QUrl::fromLocalFile(userPath));
+    });
+
+    connect(ui->logPresetsButton, &QPushButton::clicked, this, [this]() {
+        auto dlg = new LogPresetsDialog(m_gui_settings, this);
+        connect(dlg, &LogPresetsDialog::PresetChosen, this,
+                [this](const QString& filter) { ui->logFilterLineEdit->setText(filter); });
+        dlg->exec();
+    });
+
+    // ------------------ Debug --------------------------------------------------------
+    connect(ui->vkValidationCheckBox, &QCheckBox::checkStateChanged, this,
+            [this](Qt::CheckState state) {
+                state ? ui->vkLayersGroupBox->setVisible(true)
+                      : ui->vkLayersGroupBox->setVisible(false);
+            });
 }
 
 // ---------------------------- Load from backend to UI ----------------------------
@@ -305,6 +351,84 @@ void SettingsDialog::LoadValuesFromConfig() {
         m_gui_settings->GetValue(GUI::general_show_changelog).toBool());
     ui->separateUpdateCheckBox->setChecked(
         m_gui_settings->GetValue(GUI::general_separate_update_folder).toBool());
+
+    // ------------------ Graphics tab --------------------------------------------------------
+    // First options is auto selection -1, so gpuId on the GUI will always have to subtract 1
+    // when setting and add 1 when getting to select the correct gpu in Qt
+    ui->graphicsAdapterBox->setCurrentIndex(m_emu_settings->GetGpuId() + 1);
+
+    std::string presentMode = m_emu_settings->GetPresentMode();
+    QString translatedText_PresentMode = presentModeMap.key(QString::fromStdString(presentMode));
+    ui->presentModeComboBox->setCurrentText(translatedText_PresentMode);
+
+    std::string fullscreenMode = m_emu_settings->GetFullScreenMode();
+    QString translatedText_FullscreenMode =
+        screenModeMap.key(QString::fromStdString(fullscreenMode));
+    ui->displayModeComboBox->setCurrentText(translatedText_FullscreenMode);
+
+    ui->nullGpuCheckBox->setChecked(m_emu_settings->IsNullGPU());
+    ui->heightSpinBox->setValue(m_emu_settings->GetWindowHeight());
+    ui->widthSpinBox->setValue(m_emu_settings->GetWindowWidth());
+    ui->enableHDRCheckBox->setChecked(m_emu_settings->IsHdrAllowed());
+
+    ui->FSRCheckBox->setChecked(m_emu_settings->IsFsrEnabled());
+    ui->RCASCheckBox->setChecked(m_emu_settings->IsRcasEnabled());
+    ui->RCASSlider->setValue(m_emu_settings->GetRcasAttenuation());
+
+    // ------------------ Input tab --------------------------------------------------------
+    HideCursorState cursorState = static_cast<HideCursorState>(m_emu_settings->GetCursorState());
+    QString translatedText_cursorState = cursorStateMap.key(cursorState);
+    ui->hideCursorComboBox->setCurrentText(translatedText_cursorState);
+    if (ui->hideCursorComboBox->currentText() != tr("Idle")) {
+        ui->idleTimeoutGroupBox->hide();
+    }
+
+    ui->idleTimeoutSpinBox->setValue(m_emu_settings->GetCursorHideTimeout());
+    ui->usbComboBox->setCurrentIndex(m_emu_settings->GetUsbDevice());
+    ui->micComboBox->setCurrentText(QString::fromStdString(m_emu_settings->GetMicDevice()));
+    ui->motionControlsCheckBox->setChecked(m_emu_settings->IsMotionControlsEnabled());
+    ui->backgroundControllerCheckBox->setChecked(m_emu_settings->IsBackgroundControllerInput());
+
+    // ------------------ Log tab --------------------------------------------------------
+    ui->logFilterLineEdit->setText(QString::fromStdString(m_emu_settings->GetLogFilter()));
+    ui->enableLoggingCheckBox->setChecked(m_emu_settings->IsLogEnabled());
+    ui->separateLogFilesCheckbox->setChecked(m_emu_settings->IsSeparateLoggingEnabled());
+
+    std::string logType = m_emu_settings->GetLogType();
+    QString translatedText_LogType = logTypeMap.key(QString::fromStdString(logType));
+    ui->logTypeComboBox->setCurrentText(translatedText_LogType);
+
+    // ------------------ Debug tab --------------------------------------------------------
+    ui->rdocCheckBox->setChecked(m_emu_settings->IsRenderdocEnabled());
+    ui->dumpShadersCheckBox->setChecked(m_emu_settings->IsDumpShaders());
+    ui->debugDump->setChecked(m_emu_settings->IsDebugDump());
+    ui->copyGPUBuffersCheckBox->setChecked(m_emu_settings->IsCopyGpuBuffers());
+
+    ui->vkValidationCheckBox->setChecked(m_emu_settings->IsVkValidationEnabled());
+    ui->vkCoreValidationCheckBox->setChecked(m_emu_settings->IsVkValidationCoreEnabled());
+    ui->vkSyncValidationCheckBox->setChecked(m_emu_settings->IsVkValidationSyncEnabled());
+    ui->vkGpuValidationCheckBox->setChecked(m_emu_settings->IsVkValidationGpuEnabled());
+    ui->vkValidationCheckBox->isChecked() ? ui->vkLayersGroupBox->setVisible(true)
+                                          : ui->vkLayersGroupBox->setVisible(false);
+
+    ui->collectShaderCheckBox->setChecked(m_emu_settings->IsShaderCollect());
+    ui->crashDiagnosticsCheckBox->setChecked(m_emu_settings->IsCrashDiagnosticEnabled());
+    ui->hostMarkersCheckBox->setChecked(m_emu_settings->IsHostMarkers());
+    ui->guestMarkersCheckBox->setChecked(m_emu_settings->IsGuestMarkers());
+
+    // ------------------ Experimental tab --------------------------------------------------------
+    ui->readbacksCheckBox->setChecked(m_emu_settings->IsReadbacksEnabled());
+    ui->readbackLinearImagesCheckBox->setChecked(m_emu_settings->IsReadbackLinearImagesEnabled());
+    ui->dmaCheckBox->setChecked(m_emu_settings->IsDirectMemoryAccessEnabled());
+    ui->devkitCheckBox->setChecked(m_emu_settings->IsDevKit());
+    ui->neoCheckBox->setChecked(m_emu_settings->IsNeo());
+    ui->psnSignInCheckBox->setChecked(m_emu_settings->IsPSNSignedIn());
+    ui->networkConnectedCheckBox->setChecked(m_emu_settings->IsConnectedToNetwork());
+
+    ui->enableShaderCacheCheckBox->setChecked(m_emu_settings->IsPipelineCacheEnabled());
+    ui->archiveShaderCacheCheckBox->setChecked(m_emu_settings->IsPipelineCacheArchive());
+    ui->dmemSpinBox->setValue(m_emu_settings->GetExtraDmemInMBytes());
+    ui->vblankSpinBox->setValue(m_emu_settings->GetVblankFrequency());
 
     // ------------------ Games Folder --------------------------------------------------------
     ui->gameFoldersListWidget->clear();
@@ -417,6 +541,70 @@ void SettingsDialog::ApplyValuesToBackend() {
     m_gui_settings->SetValue(GUI::general_separate_update_folder,
                              ui->separateUpdateCheckBox->isChecked());
 
+    // ------------------ Graphics tab --------------------------------------------------------
+    bool isFullscreen = ui->displayModeComboBox->currentText() != tr("Windowed");
+    m_emu_settings->SetFullScreen(isFullscreen);
+    m_emu_settings->SetPresentMode(
+        presentModeMap.value(ui->presentModeComboBox->currentText()).toStdString());
+    m_emu_settings->SetFullScreenMode(
+        screenModeMap.value(ui->displayModeComboBox->currentText()).toStdString());
+
+    m_emu_settings->SetWindowHeight(ui->heightSpinBox->value());
+    m_emu_settings->SetWindowWidth(ui->widthSpinBox->value());
+    m_emu_settings->SetHdrAllowed(ui->enableHDRCheckBox->isChecked());
+
+    m_emu_settings->SetFsrEnabled(ui->FSRCheckBox->isChecked());
+    m_emu_settings->SetRcasEnabled(ui->RCASCheckBox->isChecked());
+    m_emu_settings->SetRcasAttenuation(ui->RCASSlider->value());
+
+    // First options is auto selection -1, so gpuId on the GUI will always have to subtract 1
+    // when setting and add 1 when getting to select the correct gpu in Qt
+    m_emu_settings->SetGpuId(ui->graphicsAdapterBox->currentIndex() - 1);
+
+    // ------------------ Input tab --------------------------------------------------------
+    m_emu_settings->SetCursorState(cursorStateMap.value(ui->hideCursorComboBox->currentText()));
+    m_emu_settings->SetCursorHideTimeout(ui->idleTimeoutSpinBox->value());
+    m_emu_settings->SetMicDevice(ui->micComboBox->currentText().toStdString());
+    m_emu_settings->SetUsbDevice(ui->usbComboBox->currentIndex());
+    m_emu_settings->SetMotionControlsEnabled(ui->motionControlsCheckBox->isChecked());
+    m_emu_settings->SetBackgroundControllerInput(ui->backgroundControllerCheckBox->isChecked());
+
+    // ------------------ Log tab --------------------------------------------------------
+    m_emu_settings->SetLogFilter(ui->logFilterLineEdit->text().toStdString());
+    m_emu_settings->SetLogEnabled(ui->enableLoggingCheckBox->isChecked());
+    m_emu_settings->SetSeparateLoggingEnabled(ui->separateLogFilesCheckbox->isChecked());
+    m_emu_settings->SetLogType(logTypeMap.value(ui->logTypeComboBox->currentText()).toStdString());
+
+    // ------------------ Debug tab --------------------------------------------------------
+    m_emu_settings->SetRenderdocEnabled(ui->rdocCheckBox->isChecked());
+    m_emu_settings->SetDumpShaders(ui->dumpShadersCheckBox->isChecked());
+    m_emu_settings->SetDebugDump(ui->debugDump->isChecked());
+    m_emu_settings->SetCopyGpuBuffers(ui->copyGPUBuffersCheckBox->isChecked());
+
+    m_emu_settings->SetVkValidationEnabled(ui->vkValidationCheckBox->isChecked());
+    m_emu_settings->SetVkValidationCoreEnabled(ui->vkCoreValidationCheckBox->isChecked());
+    m_emu_settings->SetVkValidationSyncEnabled(ui->vkSyncValidationCheckBox->isChecked());
+    m_emu_settings->SetVkValidationGpuEnabled(ui->vkGpuValidationCheckBox->isChecked());
+
+    m_emu_settings->SetShaderCollect(ui->collectShaderCheckBox->isChecked());
+    m_emu_settings->SetCrashDiagnosticEnabled(ui->crashDiagnosticsCheckBox->isChecked());
+    m_emu_settings->SetHostMarkers(ui->hostMarkersCheckBox->isChecked());
+    m_emu_settings->SetGuestMarkers(ui->guestMarkersCheckBox->isChecked());
+
+    // ------------------ Experimental tab --------------------------------------------------------
+    m_emu_settings->SetReadbacksEnabled(ui->readbacksCheckBox->isChecked());
+    m_emu_settings->SetReadbackLinearImagesEnabled(ui->readbackLinearImagesCheckBox->isChecked());
+    m_emu_settings->SetDirectMemoryAccessEnabled(ui->dmaCheckBox->isChecked());
+    m_emu_settings->SetDevKit(ui->devkitCheckBox->isChecked());
+    m_emu_settings->SetNeo(ui->neoCheckBox->isChecked());
+    m_emu_settings->SetPSNSignedIn(ui->psnSignInCheckBox->isChecked());
+    m_emu_settings->SetConnectedToNetwork(ui->networkConnectedCheckBox->isChecked());
+
+    m_emu_settings->SetPipelineCacheEnabled(ui->enableShaderCacheCheckBox->isChecked());
+    m_emu_settings->SetPipelineCacheArchive(ui->archiveShaderCacheCheckBox->isChecked());
+    m_emu_settings->SetExtraDmemInMBytes(ui->dmemSpinBox->value());
+    m_emu_settings->SetVblankFrequency(ui->vblankSpinBox->value());
+
     // ------------------ Paths tab --------------------------------------------------------
     for (int i = 0; i < ui->gameFoldersListWidget->count(); ++i) {
         auto* item = ui->gameFoldersListWidget->item(i);
@@ -510,27 +698,29 @@ void SettingsDialog::HandleButtonBox() {
 }
 
 void SettingsDialog::PopulateComboBoxes() {
-    /* TODO
     // GPU Devices
-    int deviceCount = GetVulkanDeviceCount();
-    char** names;
-    const int maxDeviceNameLength = 30;
-    GetVulkanDeviceNames(names, deviceCount, maxDeviceNameLength);
-    for (int i = 0; i < deviceCount; ++i) {
+    ui->graphicsAdapterBox->addItem(tr("Auto Select")); // -1, auto selection
+    const int maxDevices = GetVulkanDeviceCount();
+    const int maxNameLength = 100;
+    std::vector<char*> names(maxDevices);
+    for (int i = 0; i < maxDevices; ++i)
+        names[i] = new char[maxNameLength];
+    GetVulkanDeviceNames(names.data(), maxDevices, maxNameLength);
+    for (int i = 0; i < maxDevices; ++i) {
         ui->graphicsAdapterBox->addItem(names[i]);
+        delete[] names[i];
     }
-    */
 
-    // Audio Playback Devices
+    // Audio Devices
+    SDL_InitSubSystem(SDL_INIT_AUDIO);
+
     ui->GenAudioComboBox->addItem(tr("Default Device"), "Default Device");
     ui->DsAudioComboBox->addItem(tr("Default Device"), "Default Device");
-
-    SDL_InitSubSystem(SDL_INIT_AUDIO);
-    int count = 0;
-    SDL_AudioDeviceID* devices = SDL_GetAudioPlaybackDevices(&count);
-    if (devices) {
-        for (int i = 0; i < count; ++i) {
-            SDL_AudioDeviceID devId = devices[i];
+    int playback_count = 0;
+    SDL_AudioDeviceID* pdevices = SDL_GetAudioPlaybackDevices(&playback_count);
+    if (pdevices) {
+        for (int i = 0; i < playback_count; ++i) {
+            SDL_AudioDeviceID devId = pdevices[i];
             const char* name = SDL_GetAudioDeviceName(devId);
             if (name) {
                 QString qname = QString::fromUtf8(name);
@@ -538,11 +728,39 @@ void SettingsDialog::PopulateComboBoxes() {
                 ui->DsAudioComboBox->addItem(qname, QString::number(devId));
             }
         }
-        SDL_free(devices);
+        SDL_free(pdevices);
     } else {
         qDebug() << "Error getting audio devices: " << SDL_GetError();
     }
 
+    ui->micComboBox->addItem(micMap.key("None"), "None");
+    ui->micComboBox->addItem(micMap.key("Default Device"), "Default Device");
+    int recording_count = 0;
+    SDL_AudioDeviceID* rdevices = SDL_GetAudioRecordingDevices(&recording_count);
+    if (rdevices) {
+        for (int i = 0; i < recording_count; ++i) {
+            SDL_AudioDeviceID devId = rdevices[i];
+            const char* name = SDL_GetAudioDeviceName(devId);
+            if (name) {
+                QString qname = QString::fromUtf8(name);
+                ui->micComboBox->addItem(qname, QString::number(devId));
+            }
+        }
+        SDL_free(rdevices);
+    } else {
+        qDebug() << "Erro SDL_GetAudioRecordingDevices:" << SDL_GetError();
+    }
+
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
     SDL_Quit();
+
+    // Other Settings
+    ui->hideCursorComboBox->addItem(tr("Never"));
+    ui->hideCursorComboBox->addItem(tr("Idle"));
+    ui->hideCursorComboBox->addItem(tr("Always"));
+
+    ui->usbComboBox->addItem(tr("Real USB Device"));
+    ui->usbComboBox->addItem(tr("Skylander Portal"));
+    ui->usbComboBox->addItem(tr("Infinity Base"));
+    ui->usbComboBox->addItem(tr("Dimensions Toypad"));
 }

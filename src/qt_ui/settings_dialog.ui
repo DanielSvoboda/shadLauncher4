@@ -57,7 +57,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>7</number>
      </property>
      <property name="usesScrollButtons">
       <bool>true</bool>
@@ -1876,7 +1876,11 @@
                 </property>
                 <layout class="QVBoxLayout" name="logFilterLayout">
                  <item>
-                  <widget class="QLineEdit" name="logFilterLineEdit"/>
+                  <widget class="QLineEdit" name="logFilterLineEdit">
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
                  </item>
                  <item>
                   <widget class="QPushButton" name="logPresetsButton">
@@ -2153,7 +2157,7 @@
          <x>0</x>
          <y>0</y>
          <width>946</width>
-         <height>388</height>
+         <height>399</height>
         </rect>
        </property>
        <property name="sizePolicy">
@@ -2248,6 +2252,29 @@
             </item>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_10">
+              <item>
+               <widget class="QGroupBox" name="shaderCacheGroupBox">
+                <property name="title">
+                 <string>Shader Cache</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_13">
+                 <item>
+                  <widget class="QCheckBox" name="enableShaderCacheCheckBox">
+                   <property name="text">
+                    <string>Enable Shader Cache</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="archiveShaderCacheCheckBox">
+                   <property name="text">
+                    <string>Compress Shader Cache Files into Zip File</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
               <item>
                <widget class="QGroupBox" name="dmemGroupBox">
                 <property name="title">

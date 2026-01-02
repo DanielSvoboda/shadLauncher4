@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE TS>
-<!-- SPDX-FileCopyrightText: Copyright 2025 shadLauncher4 Project
+<!-- SPDX-FileCopyrightText: Copyright 2025-2026 shadLauncher4 Project
      SPDX-License-Identifier: GPL-2.0-or-later -->
 <TS language="nb" sourcelanguage="en_US" version="2.1">
     <context>

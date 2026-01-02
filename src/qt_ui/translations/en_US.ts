@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- SPDX-FileCopyrightText: Copyright 2025 shadLauncher4 Project
+<!-- SPDX-FileCopyrightText: Copyright 2025-2026 shadLauncher4 Project
      SPDX-License-Identifier: GPL-2.0-or-later -->
 <!DOCTYPE TS>
 <TS version="2.1" sourcelanguage="en_US">
@@ -960,6 +960,49 @@ Notes:
     </message>
 </context>
 <context>
+    <name>LogPresetsDialog</name>
+    <message>
+        <source>Log Filter Presets</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Comment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>-</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add a new preset after the selected row</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove selected presets</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Load the selected preset</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>MainWindow</name>
     <message>
         <source>Search...</source>
@@ -1309,6 +1352,26 @@ Notes:
         <source>File doesn&apos;t appear to be a valid PKG file</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>No valid PKG decryption keys found. Please set them up in the Crypto Key Manager.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No valid Fake PKG decryption keys found. Please set them up in the Crypto Key Manager.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PKG Install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No valid PKG files were found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not read SFO. Check log for details.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NpBindDialog</name>
@@ -1392,16 +1455,27 @@ Notes:
 <context>
     <name>PkgInstallDirSelectDialog</name>
     <message>
-        <source>shadLauncher4 - Choose directory</source>
+        <source>shadLauncher4 - Install PKG Files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Select which directory you want to install to.</source>
+        <source>Select PKG files to install</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Name: 
-Serial: </source>
+        <source>Select All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select None</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Invert Selection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Installation Directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1409,11 +1483,7 @@ Serial: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Install All Queued to Selected Folder</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Delete PKG File on Install</source>
+        <source>Delete PKG files after successful installation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1421,13 +1491,46 @@ Serial: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Name: %1
-Serial: %2</source>
+        <source>Install Selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>%1: %2 (%3)
-</source>
+        <source>No Selection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select at least one game to install.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please select an installation directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PkgInstallModel</name>
+    <message>
+        <source>Install</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Title ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Game Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App Version</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Category</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2144,6 +2247,54 @@ Serial: %2</source>
     </message>
     <message>
         <source>Discord Rich Presence</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shader Cache</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable Shader Cache</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Compress Shader Cache Files into Zip File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Idle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Auto Select</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Never</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Always</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Real USB Device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Skylander Portal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Infinity Base</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dimensions Toypad</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>None</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

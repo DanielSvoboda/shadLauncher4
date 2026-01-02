@@ -1,10 +1,6 @@
 // SPDX-FileCopyrightText: Copyright 2025 shadLauncher4 Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <common/path_util.h>
 #include "emulator_state.h"
 
 std::shared_ptr<EmulatorState> EmulatorState::s_instance = nullptr;

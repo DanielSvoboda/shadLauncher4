@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: Copyright 2025 shadLauncher4 Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#pragma once
+
 #include <memory>
 #include <mutex>
-#include <string>
-#include <vector>
 
 class EmulatorState {
 public:

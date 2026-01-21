@@ -45,6 +45,7 @@ private:
                           const QString& latestTag, QTextBrowser* outputView);
     void installPreReleaseByTag(const QString& tagName);
     void showDownloadDialog(const QString& tagName, const QString& downloadUrl);
+    bool CopyExecutableToAppDir(const QString& sourceExe, QWidget* parent);
     Downloader* m_downloader = nullptr;
 
 protected:

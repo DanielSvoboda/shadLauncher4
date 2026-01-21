@@ -53,8 +53,8 @@ void IpcClient::stopEmulator() {
 }
 
 void IpcClient::restartEmulator() {
-    stopEmulator();
     pendingRestart = true;
+    stopEmulator();
 }
 
 void IpcClient::toggleFullscreen() {

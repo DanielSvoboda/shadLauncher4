@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <QDir>
+#include <QDirIterator>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QJsonArray>
@@ -103,10 +104,10 @@ VersionDialog::VersionDialog(std::shared_ptr<GUISettings> gui_settings, QWidget*
                                                tr("Executable (*.exe)"));
 #elif defined(Q_OS_LINUX)
     exePath = QFileDialog::getOpenFileName(this, tr("Select executable"), QDir::rootPath(),
-                                           "Executable (*)");
+                                           tr("Executable (*)"));
 #elif defined(Q_OS_MACOS)
     exePath = QFileDialog::getOpenFileName(this, tr("Select executable"), QDir::rootPath(),
-                                           "Executable (*.*)");
+                                           tr("Executable (*.*)"));
 #endif
 
         if (exePath.isEmpty())
@@ -117,32 +118,101 @@ VersionDialog::VersionDialog(std::shared_ptr<GUISettings> gui_settings, QWidget*
             QInputDialog::getText(this, tr("Version name"),
                                   tr("Enter the name of this version as it appears in the list."),
                                   QLineEdit::Normal, "", &ok);
+
         if (!ok || version_name.trimmed().isEmpty())
             return;
 
         version_name = version_name.trimmed();
 
-        if (std::find_if(version_list.cbegin(), version_list.cend(), [version_name](auto i) {
-                return i.name == version_name.toStdString();
+        if (std::find_if(version_list.cbegin(), version_list.cend(), [&](const auto& v) {
+                return v.name == version_name.toStdString();
             }) != version_list.cend()) {
             QMessageBox::warning(this, tr("Error"), tr("A version with that name already exists."));
             return;
         }
 
-        VersionManager::Version new_version = {
+        QString versionsRoot =
+            m_gui_settings->GetValue(GUI::version_manager_versionPath).toString();
+
+        if (versionsRoot.isEmpty()) {
+            QMessageBox::warning(this, tr("Error"), tr("Version install path is not configured."));
+            return;
+        }
+
+        QString destFolder = QDir(versionsRoot).filePath(version_name);
+        QDir().mkpath(destFolder);
+
+        QFileInfo srcInfo(exePath);
+        QString destExePath = QDir(destFolder).filePath(srcInfo.fileName());
+
+        if (QFile::exists(destExePath))
+            QFile::remove(destExePath);
+
+        if (!QFile::copy(exePath, destExePath)) {
+            QMessageBox::critical(this, tr("Error"),
+                                  tr("Failed to copy executable into versions folder."));
+            return;
+        }
+
+#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+        QFile(destExePath)
+            .setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                            QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther |
+                            QFile::ExeOther);
+#endif
+
+        // ---- Copy to application directory (same as releases) ----
+
+        QString appDir = QCoreApplication::applicationDirPath();
+
+#ifdef Q_OS_WIN
+        QString appExePath = appDir + "/shadPS4.exe";
+#elif defined(Q_OS_LINUX)
+    QString appExePath = appDir + "/shadPS4";
+#elif defined(Q_OS_MACOS)
+    QString appExePath = appDir + "/shadPS4.app/Contents/MacOS/shadPS4";
+#endif
+
+        if (QFile::exists(appExePath)) {
+            QString backupPath = appExePath + ".backup";
+            if (QFile::exists(backupPath))
+                QFile::remove(backupPath);
+            QFile::rename(appExePath, backupPath);
+        }
+
+        if (!QFile::copy(destExePath, appExePath)) {
+            QMessageBox::warning(this, tr("Warning"),
+                                 tr("Failed to install executable into application directory.\n"
+                                    "The custom build is still available under:\n%1")
+                                     .arg(destFolder));
+        } else {
+#if defined(Q_OS_LINUX)
+            QFile(appExePath)
+                .setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                                QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther |
+                                QFile::ExeOther);
+#endif
+        }
+
+        VersionManager::Version new_version{
             .name = version_name.toStdString(),
-            .path = exePath.toStdString(),
+            .path = destExePath.toStdString(), // IMPORTANT: version folder path
             .date = QLocale::system()
                         .toString(QDate::currentDate(), QLocale::ShortFormat)
                         .toStdString(),
             .codename = tr("Local").toStdString(),
             .type = VersionManager::VersionType::Custom,
         };
-        VersionManager::AddNewVersion(new_version);
-        m_gui_settings->SetValue(GUI::version_manager_versionSelected,
-                                 QString::fromStdString(new_version.path));
 
-        QMessageBox::information(this, tr("Success"), tr("Version added successfully."));
+        VersionManager::AddNewVersion(new_version);
+
+        m_gui_settings->SetValue(GUI::version_manager_versionSelected, destExePath);
+
+        QMessageBox::information(this, tr("Success"),
+                                 tr("Custom version installed successfully:\n\n"
+                                    " Version folder: %1\n"
+                                    " Installed to: %2")
+                                     .arg(destFolder, appExePath));
         LoadInstalledList();
     });
 
@@ -236,24 +306,72 @@ void VersionDialog::HandleResize(QResizeEvent* event) {
     this->ui->versionTab->resize(this->size());
 }
 
-void VersionDialog::onItemChanged(QTreeWidgetItem* item, int column) {
-    if (column == 0) {
-        if (item->checkState(0) == Qt::Checked) {
-            for (int row = 0; row < ui->installedTreeWidget->topLevelItemCount(); ++row) {
-                QTreeWidgetItem* topItem = ui->installedTreeWidget->topLevelItem(row);
-                if (topItem != item) {
-                    topItem->setCheckState(0, Qt::Unchecked);
-                    topItem->setSelected(false);
-                }
-            }
-            QString fullPath = item->text(4);
-            m_gui_settings->SetValue(GUI::version_manager_versionSelected, fullPath);
+bool VersionDialog::CopyExecutableToAppDir(const QString& sourceExe, QWidget* parent) {
+    if (sourceExe.isEmpty() || !QFile::exists(sourceExe)) {
+        QMessageBox::warning(parent, QObject::tr("Error"),
+                             QObject::tr("Executable does not exist:\n%1").arg(sourceExe));
+        return false;
+    }
 
-            item->setSelected(true);
-        } else {
-            item->setSelected(false);
+    QString appDir = QCoreApplication::applicationDirPath();
+
+#ifdef Q_OS_WIN
+    QString appExePath = appDir + "/shadPS4.exe";
+#elif defined(Q_OS_LINUX)
+    QString appExePath = appDir + "/shadPS4";
+#elif defined(Q_OS_MACOS)
+    QString appExePath = appDir + "/shadPS4.app/Contents/MacOS/shadPS4";
+#endif
+
+    if (QFile::exists(appExePath)) {
+        QString backupPath = appExePath + ".backup";
+        QFile::remove(backupPath);
+        QFile::rename(appExePath, backupPath);
+    }
+
+    if (!QFile::copy(sourceExe, appExePath)) {
+        QMessageBox::warning(parent, QObject::tr("Error"),
+                             QObject::tr("Failed to copy executable to application directory."));
+        return false;
+    }
+
+#if defined(Q_OS_LINUX)
+    QFile(appExePath)
+        .setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup |
+                        QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
+#endif
+
+    return true;
+}
+
+void VersionDialog::onItemChanged(QTreeWidgetItem* item, int column) {
+    if (column != 0)
+        return;
+
+    if (item->checkState(0) != Qt::Checked) {
+        item->setSelected(false);
+        return;
+    }
+
+    // Uncheck all other items
+    for (int row = 0; row < ui->installedTreeWidget->topLevelItemCount(); ++row) {
+        QTreeWidgetItem* topItem = ui->installedTreeWidget->topLevelItem(row);
+        if (topItem != item) {
+            topItem->setCheckState(0, Qt::Unchecked);
+            topItem->setSelected(false);
         }
     }
+
+    QString versionExePath = item->text(4); // stored executable path
+
+    if (!CopyExecutableToAppDir(versionExePath, this)) {
+        // Roll back checkbox if install failed
+        item->setCheckState(0, Qt::Unchecked);
+        return;
+    }
+
+    m_gui_settings->SetValue(GUI::version_manager_versionSelected, versionExePath);
+    item->setSelected(true);
 }
 
 void VersionDialog::DownloadListVersion() {
@@ -379,27 +497,43 @@ tr("First you need to choose a location to save the versions in\n'Path to save v
                 connect(
                     m_downloader, &Downloader::SignalDownloadFinished, this,
                     [this, release, versionName, userPath](const QByteArray&) {
-                        QString releaseName = release["name"].toString();
-
-                        // Remove "shadPS4 " from the beginning, if it exists
-                        if (releaseName.startsWith("shadps4 ", Qt::CaseInsensitive)) {
-                            releaseName = releaseName.mid(8);
+                        QString normalizedVersionName = versionName;
+                        // Normalize version format: convert "v.0.11.0" to "v0.11.0"
+                        // Also handle other possible formats
+                        if (normalizedVersionName.startsWith("v.")) {
+                            normalizedVersionName = "v" + normalizedVersionName.mid(2);
+                        } else if (normalizedVersionName.startsWith("version ",
+                                                                    Qt::CaseInsensitive)) {
+                            normalizedVersionName = "v" + normalizedVersionName.mid(8);
+                        } else if (normalizedVersionName.startsWith("Version ",
+                                                                    Qt::CaseInsensitive)) {
+                            normalizedVersionName = "v" + normalizedVersionName.mid(8);
+                        } else if (!normalizedVersionName.startsWith("v")) {
+                            // If it doesn't start with v at all, add it (for cases like "0.11.0")
+                            normalizedVersionName = "v" + normalizedVersionName;
                         }
-
-                        // Remove "codename" if it exists
-                        releaseName.replace(QRegularExpression("\\b[Cc]odename\\s+"), "");
 
                         QString folderName;
                         if (versionName.contains("Pre-release", Qt::CaseInsensitive)) {
                             folderName = "Pre-release";
                         } else {
-                            QString datePart = release["published_at"].toString().left(10);
-                            folderName = QString("%1 - %2").arg(releaseName, datePart);
+                            // JUST use the version name without date
+                            folderName = normalizedVersionName;
                         }
 
                         QString destFolder = QDir(userPath).filePath(folderName);
+                        QString zipPath = userPath + "/temp_download_update.zip";
+                        QString appDir = QCoreApplication::applicationDirPath();
 
-                        // extract ZIP
+#ifdef Q_OS_WIN
+                        QString appExePath = appDir + "/shadPS4.exe";
+#elif defined(Q_OS_LINUX)
+                        QString appExePath = appDir + "/shadPS4";
+#elif defined(Q_OS_MACOS)
+                        QString appExePath = appDir + "/shadPS4.app/Contents/MacOS/shadPS4";
+#endif
+
+                        // extract ZIP to version folder
                         QString scriptFilePath;
                         QString scriptContent;
                         QStringList args;
@@ -415,24 +549,23 @@ tr("First you need to choose a location to save the versions in\n'Path to save v
                                                 "Remove-Item -Force \"%3\"\n"
                                                 "cls\n")
                                             .arg(destFolder)
-                                            .arg(userPath + "/temp_download_update.zip")
+                                            .arg(zipPath)
                                             .arg(scriptFilePath);
                         process = "powershell.exe";
                         args << "-ExecutionPolicy" << "Bypass" << "-File" << scriptFilePath;
 #elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-                    scriptFilePath = userPath + "/extract_update.sh";
-                    scriptContent = QString(
-                                        "#!/bin/bash\n"
-                                        "mkdir -p \"%1\"\n"
-                                        "unzip -o \"%2\" -d \"%1\"\n"
-                                        "rm \"%2\"\n"
-                                        "rm \"%3\"\n"
-                                        "clear\n")
-                                        .arg(destFolder)
-                                        .arg(userPath + "/temp_download_update.zip")
-                                        .arg(scriptFilePath);
-                    process = "bash";
-                    args << scriptFilePath;
+                        scriptFilePath = userPath + "/extract_update.sh";
+                        scriptContent = QString("#!/bin/bash\n"
+                                                "mkdir -p \"%1\"\n"
+                                                "unzip -o \"%2\" -d \"%1\"\n"
+                                                "rm \"%2\"\n"
+                                                "rm \"%3\"\n"
+                                                "clear\n")
+                                            .arg(destFolder)
+                                            .arg(zipPath)
+                                            .arg(scriptFilePath);
+                        process = "bash";
+                        args << scriptFilePath;
 #endif
 
                         QFile scriptFile(scriptFilePath);
@@ -447,17 +580,108 @@ tr("First you need to choose a location to save the versions in\n'Path to save v
                             scriptFile.setPermissions(QFile::ExeUser | QFile::ReadUser |
                                                       QFile::WriteUser);
 #endif
-                            QProcess::startDetached(process, args);
 
+                            // Run extraction script
+                            QProcess extractProcess;
+                            extractProcess.start(process, args);
+                            extractProcess.waitForFinished();
+
+                            // Wait a bit for extraction to complete, then find and copy the
+                            // executable
                             QTimer::singleShot(
-                                4000, this, [this, folderName, versionName, release]() {
+                                2000, this,
+                                [this, destFolder, versionName, release, appExePath, appDir,
+                                 userPath, folderName]() {
+                                    // Find the executable in the extracted folder
+                                    QString versionExePath = "";
+                                    QDirIterator it(destFolder, QDirIterator::Subdirectories);
+
+                                    while (it.hasNext()) {
+                                        it.next();
+                                        QFileInfo fileInfo = it.fileInfo();
+
+#ifdef Q_OS_WIN
+                                        if (fileInfo.isFile() &&
+                                            fileInfo.suffix().compare("exe", Qt::CaseInsensitive) ==
+                                                0) {
+                                            versionExePath = fileInfo.absoluteFilePath();
+                                            break;
+                                        }
+#elif defined(Q_OS_LINUX)
+                                        if (fileInfo.isFile() && fileInfo.isExecutable() &&
+                                            !fileInfo.fileName().contains('.')) {
+                                            versionExePath = fileInfo.absoluteFilePath();
+                                            break;
+                                        }
+#elif defined(Q_OS_MACOS)
+                                        if (fileInfo.isFile() && fileInfo.isExecutable() &&
+                                            fileInfo.fileName() == "shadPS4") {
+                                            versionExePath = fileInfo.absoluteFilePath();
+                                            break;
+                                        }
+#endif
+                                    }
+
+                                    if (versionExePath.isEmpty()) {
+                                        // Fallback to using GetVersionExecutablePath
+                                        versionExePath =
+                                            m_gui_settings->GetVersionExecutablePath(folderName);
+                                    }
+
+                                    if (versionExePath.isEmpty() ||
+                                        !QFile::exists(versionExePath)) {
+                                        QMessageBox::warning(
+                                            this, tr("Error"),
+                                            tr("Could not find executable in extracted files."));
+                                        return;
+                                    }
+
+                                    // Copy to application directory
+                                    bool copySuccess = false;
+
+                                    if (QFile::exists(appExePath)) {
+                                        // Create backup of old executable
+                                        QString backupPath = appExePath + ".backup";
+                                        if (QFile::exists(backupPath)) {
+                                            QFile::remove(backupPath);
+                                        }
+                                        QFile::rename(appExePath, backupPath);
+                                    }
+
+                                    if (QFile::copy(versionExePath, appExePath)) {
+                                        copySuccess = true;
+#ifdef Q_OS_LINUX
+                                        // Set executable permissions
+                                        QFile(appExePath)
+                                            .setPermissions(QFile::ReadOwner | QFile::WriteOwner |
+                                                            QFile::ExeOwner | QFile::ReadGroup |
+                                                            QFile::ExeGroup | QFile::ReadOther |
+                                                            QFile::ExeOther);
+#endif
+                                    }
+
+                                    if (!copySuccess) {
+                                        QMessageBox::warning(this, tr("Error"),
+                                                             tr("Failed to copy executable to "
+                                                                "application directory.\n"
+                                                                "The version has been saved to: %1")
+                                                                 .arg(destFolder));
+                                    } else {
+                                        QMessageBox::information(
+                                            this, tr("Success"),
+                                            tr("Version %1 has been:\n"
+                                               "1. Downloaded to: %2\n"
+                                               "2. Installed to: %3")
+                                                .arg(versionName, destFolder, appExePath));
+                                    }
+
+                                    // Register the version in version manager (using the version
+                                    // folder path)
                                     QString executablePath =
                                         m_gui_settings->GetVersionExecutablePath(folderName);
-
-                                    QMessageBox::information(
-                                        this, tr("Confirm Download"),
-                                        tr("Version %1 has been downloaded and selected.")
-                                            .arg(versionName));
+                                    if (executablePath.isEmpty()) {
+                                        executablePath = versionExePath;
+                                    }
 
                                     bool is_release = !versionName.contains("Pre-release");
                                     auto release_name = release["name"].toString();
@@ -478,6 +702,7 @@ tr("First you need to choose a location to save the versions in\n'Path to save v
                                             code_name = "unknown";
                                         }
                                     }
+
                                     std::filesystem::path exe_path =
                                         Common::FS::PathFromQString(executablePath);
 
@@ -510,9 +735,12 @@ tr("First you need to choose a location to save the versions in\n'Path to save v
                                             }
                                         }
                                     }
+
+                                    // Save both paths - version folder path AND app directory path
                                     m_gui_settings->SetValue(
                                         GUI::version_manager_versionSelected,
                                         QString::fromStdString(new_version.path));
+
                                     VersionManager::AddNewVersion(new_version);
                                     LoadInstalledList();
                                 });
@@ -990,6 +1218,15 @@ void VersionDialog::showDownloadDialog(const QString& tagName, const QString& do
 
     QString userPath = m_gui_settings->GetValue(GUI::version_manager_versionPath).toString();
     QString zipPath = QDir(userPath).filePath("temp_pre_release_download.zip");
+    QString appDir = QCoreApplication::applicationDirPath();
+
+#ifdef Q_OS_WIN
+    QString appExePath = appDir + "/shadPS4.exe";
+#elif defined(Q_OS_LINUX)
+    QString appExePath = appDir + "/shadPS4";
+#elif defined(Q_OS_MACOS)
+    QString appExePath = appDir + "/shadPS4.app/Contents/MacOS/shadPS4";
+#endif
 
     disconnect(m_downloader, nullptr, this, nullptr);
     m_downloader->DownloadJSONWithCache(downloadUrl.toStdString(), zipPath, true,
@@ -1046,12 +1283,93 @@ void VersionDialog::showDownloadDialog(const QString& tagName, const QString& do
 #if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
             scriptFile.setPermissions(QFile::ExeUser | QFile::ReadUser | QFile::WriteUser);
 #endif
-            QProcess::startDetached(process, args);
 
+            // Run extraction script
+            QProcess extractProcess;
+            extractProcess.start(process, args);
+            extractProcess.waitForFinished();
+
+            // Wait a bit for extraction to complete
             QTimer::singleShot(delayMs, this, [=, this]() {
                 if (!QDir(destFolder).exists()) {
                     QMessageBox::critical(this, tr("Error"), tr("Extraction failure."));
                     return;
+                }
+
+                // Find the executable in the extracted folder
+                QString versionExePath = "";
+                QDirIterator it(destFolder, QDirIterator::Subdirectories);
+
+                while (it.hasNext()) {
+                    it.next();
+                    QFileInfo fileInfo = it.fileInfo();
+
+#ifdef Q_OS_WIN
+                    if (fileInfo.isFile() &&
+                        fileInfo.suffix().compare("exe", Qt::CaseInsensitive) == 0) {
+                        versionExePath = fileInfo.absoluteFilePath();
+                        break;
+                    }
+#elif defined(Q_OS_LINUX)
+                    if (fileInfo.isFile() && fileInfo.isExecutable() &&
+                        !fileInfo.fileName().contains('.')) {
+                        versionExePath = fileInfo.absoluteFilePath();
+                        break;
+                    }
+#elif defined(Q_OS_MACOS)
+                    if (fileInfo.isFile() && fileInfo.isExecutable() &&
+                        fileInfo.fileName() == "shadPS4") {
+                        versionExePath = fileInfo.absoluteFilePath();
+                        break;
+                    }
+#endif
+                }
+
+                if (versionExePath.isEmpty()) {
+                    // Fallback to using GetVersionExecutablePath
+                    versionExePath = m_gui_settings->GetVersionExecutablePath("Pre-release");
+                }
+
+                if (versionExePath.isEmpty() || !QFile::exists(versionExePath)) {
+                    QMessageBox::warning(this, tr("Error"),
+                                         tr("Could not find executable in extracted files."));
+                    return;
+                }
+
+                // Copy to application directory
+                bool copySuccess = false;
+
+                if (QFile::exists(appExePath)) {
+                    // Create backup of old executable
+                    QString backupPath = appExePath + ".backup";
+                    if (QFile::exists(backupPath)) {
+                        QFile::remove(backupPath);
+                    }
+                    QFile::rename(appExePath, backupPath);
+                }
+
+                if (QFile::copy(versionExePath, appExePath)) {
+                    copySuccess = true;
+#ifdef Q_OS_LINUX
+                    // Set executable permissions
+                    QFile(appExePath)
+                        .setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                                        QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther |
+                                        QFile::ExeOther);
+#endif
+                }
+
+                if (!copySuccess) {
+                    QMessageBox::warning(this, tr("Error"),
+                                         tr("Failed to copy executable to application directory.\n"
+                                            "The pre-release version has been saved to: %1")
+                                             .arg(destFolder));
+                } else {
+                    QMessageBox::information(this, tr("Success"),
+                                             tr("Pre-release (Nightly) has been:\n"
+                                                "1. Downloaded to: %1\n"
+                                                "2. Installed to: %2")
+                                                 .arg(destFolder, appExePath));
                 }
 
                 QString codename;
@@ -1059,21 +1377,22 @@ void VersionDialog::showDownloadDialog(const QString& tagName, const QString& do
                 QRegularExpressionMatch match = re.match(tagName);
                 codename = match.hasMatch() ? match.captured(1) : "unknown";
 
-                auto const exe = m_gui_settings->GetVersionExecutablePath(destFolder);
                 VersionManager::Version new_version = {
                     .name = "Pre-release (Nightly)",
-                    .path = exe.toStdString(),
+                    .path = versionExePath.toStdString(), // Keep version folder path
                     .date = QLocale::system()
                                 .toString(QDate::currentDate(), QLocale::ShortFormat)
                                 .toStdString(),
                     .codename = codename.toStdString(),
                     .type = VersionManager::VersionType::Nightly,
                 };
-                VersionManager::UpdatePrerelease(new_version);
-                m_gui_settings->SetValue(GUI::version_manager_versionSelected, exe);
 
-                QMessageBox::information(this, tr("Complete installation"),
-                                         tr("Pre-release (Nightly) updated successfully."));
+                // Update or add the pre-release version
+                VersionManager::UpdatePrerelease(new_version);
+
+                // Also save the app directory path
+                m_gui_settings->SetValue(GUI::version_manager_versionSelected, appExePath);
+
                 LoadInstalledList();
             });
         } else {

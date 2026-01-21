@@ -57,7 +57,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="usesScrollButtons">
       <bool>true</bool>
@@ -939,8 +939,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
-         <height>506</height>
+         <width>639</width>
+         <height>316</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="graphicsTabVLayout" stretch="0,0">
@@ -1303,8 +1303,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
-         <height>506</height>
+         <width>517</width>
+         <height>354</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="inputTabVLayout" stretch="0,0">
@@ -1634,8 +1634,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
-         <height>506</height>
+         <width>202</width>
+         <height>395</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="pathsTabLayout">
@@ -1778,7 +1778,7 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
+         <width>316</width>
          <height>222</height>
         </rect>
        </property>
@@ -1933,8 +1933,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
-         <height>389</height>
+         <width>482</width>
+         <height>384</height>
         </rect>
        </property>
        <property name="sizePolicy">
@@ -2163,7 +2163,7 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>944</width>
+         <width>609</width>
          <height>374</height>
         </rect>
        </property>

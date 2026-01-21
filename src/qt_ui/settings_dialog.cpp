@@ -9,6 +9,7 @@
 #include "background_music_player.h"
 #include "common/path_util.h"
 #include "core/emulator_settings.h"
+#include "core/emulator_state.h"
 #include "game_info.h"
 #include "gui_application.h"
 #include "gui_settings.h"
@@ -46,10 +47,12 @@ inline bool operator!=(GameInstallDir const& a, GameInstallDir const& b) {
 }
 
 SettingsDialog::SettingsDialog(std::shared_ptr<GUISettings> gui_settings,
-                               std::shared_ptr<EmulatorSettings> emu_settings, int tab_index,
+                               std::shared_ptr<EmulatorSettings> emu_settings,
+                               std::shared_ptr<IpcClient> ipc_client, int tab_index,
                                QWidget* parent, const GameInfo* game, bool global)
     : QDialog(parent), m_tab_index(tab_index), ui(new Ui::SettingsDialog),
-      m_gui_settings(std::move(gui_settings)), m_emu_settings(std::move(emu_settings)) {
+      m_gui_settings(std::move(gui_settings)), m_emu_settings(std::move(emu_settings)),
+      m_ipc_client(ipc_client), is_global(global) {
     ui->setupUi(this);
 
     const SettingsDialogHelperTexts helptexts;
@@ -240,7 +243,9 @@ void SettingsDialog::OtherConnections() {
     // ------------------ General tab --------------------------------------------------------
     connect(ui->horizontalVolumeSlider, &QSlider::valueChanged, [this](int value) {
         ui->volumeText->setText(QString("%1%").arg(value));
-        // m_ipc_client->adjustVol(value, is_game_specific); pending IPC
+
+        if (EmulatorState::GetInstance()->IsGameRunning())
+            m_ipc_client->adjustVol(value, !is_global);
     });
 
     connect(ui->OpenCustomTrophyLocationButton, &QPushButton::clicked, this, []() {
@@ -264,15 +269,14 @@ void SettingsDialog::OtherConnections() {
         ui->RCASValue->setText(RCASValue);
     });
 
-    /* Pending IPC
+    if (EmulatorState::GetInstance()->IsGameRunning()) {
         connect(ui->RCASSlider, &QSlider::valueChanged, this,
                 [this](int value) { m_ipc_client->setRcasAttenuation(value); });
         connect(ui->FSRCheckBox, &QCheckBox::checkStateChanged, this,
                 [this](Qt::CheckState state) { m_ipc_client->setFsr(state); });
-
         connect(ui->RCASCheckBox, &QCheckBox::checkStateChanged, this,
                 [this](Qt::CheckState state) { m_ipc_client->setRcas(state); });
-    */
+    }
 
     // ------------------ Input tab --------------------------------------------------------
     connect(ui->hideCursorComboBox, &QComboBox::currentTextChanged, this, [this](QString text) {

@@ -49,9 +49,6 @@ jobs:
       - name: Get date and git hash
         id: vars
         run: |
-          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          echo "shorthash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "fullhash=$(git rev-parse HEAD)" >> $GITHUB_ENV
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "shorthash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "fullhash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
@@ -65,12 +62,12 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
- 
+
       - name: Enable MSVC dev environment
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          
+
       - name: Setup Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -85,16 +82,16 @@ jobs:
         shell: bash
         run: .github/workflows/scripts/update_version.sh
 
+      - name: Upload version.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-file
+          path: version.txt
+
       - name: Read computed version
         shell: pwsh
         run: |
-          $path = Join-Path $env:GITHUB_WORKSPACE "version.txt"
-          if (-not (Test-Path $path)) {
-            Write-Error "version.txt not found at $path"
-            exit 1
-          }
-          $version = (Get-Content -Path $path -Raw).Trim()
-          Write-Host "Setting APP_VERSION=$version"
+          $version = (Get-Content version.txt -Raw).Trim()
           echo "APP_VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Cache CMake Configuration
@@ -182,13 +179,7 @@ jobs:
             | tr ' ' '-' \
             | tr -cd '[:alnum:]._-')
 
-          if [ -z "$clean_version" ]; then
-            echo "Invalid version"
-            exit 1
-          fi
-
           echo "APP_VERSION=$clean_version" >> $GITHUB_ENV
-          echo "Using version: $clean_version"
 
       - name: Create Pre-Release
         uses: ncipollo/release-action@v1

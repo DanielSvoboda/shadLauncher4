@@ -56,7 +56,9 @@ jobs:
   windows-qt:
     runs-on: windows-2025
     needs: get-info
-
+    outputs:
+      APP_VERSION: ${{ steps.set_version.outputs.APP_VERSION }}
+      FULL_HASH: ${{ steps.set_version.outputs.FULL_HASH }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -82,17 +84,12 @@ jobs:
         shell: bash
         run: .github/workflows/scripts/update_version.sh
 
-      - name: Upload version.txt
-        uses: actions/upload-artifact@v4
-        with:
-          name: version-file
-          path: version.txt
-
-      - name: Read computed version
-        shell: pwsh
+      - name: Set version outputs
+        id: set_version
         run: |
           $version = (Get-Content version.txt -Raw).Trim()
-          echo "APP_VERSION=$version" >> $env:GITHUB_ENV
+          echo "APP_VERSION=$version" >> $GITHUB_OUTPUT
+          echo "FULL_HASH=${{ needs.get-info.outputs.fullhash }}" >> $GITHUB_OUTPUT
 
       - name: Cache CMake Configuration
         uses: actions/cache@v4
@@ -118,7 +115,7 @@ jobs:
           cmake --fresh -G Ninja `
             -B "${{ github.workspace }}/build" `
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DAPP_VERSION="${{ env.APP_VERSION }}" `
+            -DAPP_VERSION="${{ steps.set_version.outputs.APP_VERSION }}" `
             -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=ON `
             -DCMAKE_C_COMPILER=clang-cl `
             -DCMAKE_CXX_COMPILER=clang-cl `
@@ -146,9 +143,8 @@ jobs:
   pre-release:
     name: Create GitHub Pre-Release
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [get-info, windows-qt]
+    needs: [windows-qt]
     runs-on: ubuntu-latest
-
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -165,22 +161,12 @@ jobs:
             fi
           done
 
-      - name: Read and sanitize version
-        run: |
-          raw_version=$(cat version.txt)
-          clean_version=$(echo "$raw_version" \
-            | tr -d '\r\n' \
-            | tr ' ' '-' \
-            | tr -cd '[:alnum:]._-')
-
-          echo "APP_VERSION=$clean_version" >> $GITHUB_ENV
-
       - name: Create Pre-Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: "shadLauncher4-${{ env.APP_VERSION }}"
-          tag: "shadlauncher4-${{ env.APP_VERSION }}"
+          name: "shadLauncher4-${{ needs.windows-qt.outputs.APP_VERSION }}"
+          tag: "shadLauncher4-${{ needs.windows-qt.outputs.APP_VERSION }}-${{ needs.windows-qt.outputs.FULL_HASH }}"
           prerelease: true
           draft: false
           body: "Auto-generated release for the latest commit to main."

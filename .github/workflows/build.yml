@@ -145,3 +145,58 @@ jobs:
         with:
           name: shadLauncher4-win64-qt-${{ needs.get-info.outputs.date }}-${{ needs.get-info.outputs.shorthash }}
           path: upload/
+
+  pre-release:
+    name: Create GitHub Pre-Release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [get-info, windows-qt]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Download version.txt
+        uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+
+      - name: Zip artifacts
+        run: |
+          cd artifacts
+          for dir in */; do
+            if [ -d "$dir" ]; then
+              name=$(basename "$dir")
+              (cd "$dir" && zip -r "../$name.zip" .)
+            fi
+          done
+
+      - name: Read and sanitize version
+        run: |
+          raw_version=$(cat version.txt)
+          clean_version=$(echo "$raw_version" \
+            | tr -d '\r\n' \
+            | tr ' ' '-' \
+            | tr -cd '[:alnum:]._-')
+
+          if [ -z "$clean_version" ]; then
+            echo "Invalid version"
+            exit 1
+          fi
+
+          echo "APP_VERSION=$clean_version" >> $GITHUB_ENV
+          echo "Using version: $clean_version"
+
+      - name: Create Pre-Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "shadLauncher4-v${{ env.APP_VERSION }} build ${{ github.run_number }}"
+          tag: "shadlauncher4-v${{ env.APP_VERSION }}-build-${{ github.run_number }}"
+          prerelease: true
+          draft: false
+          body: "Auto-generated release for the latest commit to main."
+          artifacts: ./artifacts/*.zip

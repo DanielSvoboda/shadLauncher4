@@ -160,13 +160,20 @@ jobs:
               (cd "$dir" && zip -r "../$name.zip" .)
             fi
           done
+          
+      - name: Sanitize version for tag
+        run: |
+          safe_version=$(echo "${{ env.APP_VERSION }}" | tr ' ' '-')
+          echo "SAFE_VERSION=$safe_version" >> $GITHUB_ENV
+
 
       - name: Create Pre-Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: "shadLauncher4-${{ needs.windows-qt.outputs.APP_VERSION }}"
-          tag: "shadLauncher4-${{ needs.windows-qt.outputs.APP_VERSION }}-${{ needs.windows-qt.outputs.FULL_HASH }}"
+          name: "shadLauncher4-${{ env.APP_VERSION }}"
+          tag: "shadlauncher4-${{ env.SAFE_VERSION }}-${{ needs.windows-qt.outputs.FULL_HASH }}"
+
           prerelease: true
           draft: false
           body: "Auto-generated release for the latest commit to main."

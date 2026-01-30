@@ -155,12 +155,6 @@ jobs:
         with:
           path: ./artifacts
 
-      - name: Download version.txt
-        uses: actions/download-artifact@v4
-        with:
-          name: version-file
-          path: .
-
       - name: Zip artifacts
         run: |
           cd artifacts
@@ -185,8 +179,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: "shadLauncher4-v${{ env.APP_VERSION }} build ${{ github.run_number }}"
-          tag: "shadlauncher4-v${{ env.APP_VERSION }}-build-${{ github.run_number }}"
+          name: "shadLauncher4-${{ env.APP_VERSION }}"
+          tag: "shadlauncher4-${{ env.APP_VERSION }}"
           prerelease: true
           draft: false
           body: "Auto-generated release for the latest commit to main."

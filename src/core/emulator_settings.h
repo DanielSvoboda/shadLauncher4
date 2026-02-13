@@ -94,6 +94,7 @@ struct GeneralSettings {
     Setting<std::filesystem::path> addon_install_dir;
     Setting<std::filesystem::path> home_dir;
     Setting<std::filesystem::path> sys_modules_dir;
+    Setting<std::filesystem::path> font_dir;
 
     Setting<int> volume_slider{100};
     Setting<bool> neo_mode{false};
@@ -134,7 +135,7 @@ struct GeneralSettings {
     }
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GeneralSettings, install_dirs, addon_install_dir, home_dir,
-                                   sys_modules_dir, volume_slider, neo_mode, dev_kit_mode,
+                                   sys_modules_dir, font_dir, volume_slider, neo_mode, dev_kit_mode,
                                    extra_dmem_in_mbytes, psn_signed_in, trophy_popup_disabled,
                                    trophy_notification_duration, log_filter, log_type, show_splash,
                                    trophy_notification_side, connected_to_network,
@@ -347,6 +348,8 @@ public:
     void SetHomeDir(const std::filesystem::path& dir);
     std::filesystem::path GetSysModulesDir();
     void SetSysModulesDir(const std::filesystem::path& dir);
+    std::filesystem::path GetFontsDir();
+    void SetFontsDir(const std::filesystem::path& dir);
 
     // user helpers
     UserManager& GetUserManager() {

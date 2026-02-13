@@ -142,6 +142,17 @@ void EmulatorSettings::SetSysModulesDir(const std::filesystem::path& dir) {
     m_general.sys_modules_dir.value = dir;
 }
 
+std::filesystem::path EmulatorSettings::GetFontsDir() {
+    if (m_general.font_dir.value.empty()) {
+        return Common::FS::GetUserPath(Common::FS::PathType::FontsDir);
+    }
+    return m_general.font_dir.value;
+}
+
+void EmulatorSettings::SetFontsDir(const std::filesystem::path& dir) {
+    m_general.font_dir.value = dir;
+}
+
 // --------------------
 // Save
 // --------------------

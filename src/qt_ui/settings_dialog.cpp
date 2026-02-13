@@ -103,6 +103,8 @@ SettingsDialog::SettingsDialog(std::shared_ptr<GUISettings> gui_settings,
     SubscribeHelpText(ui->showSplashCheckBox, helptexts.settings.general_show_splash);
     SubscribeHelpText(ui->horizontalVolumeSlider, helptexts.settings.general_volume_slider);
     SubscribeHelpText(ui->disableTrophycheckBox, helptexts.settings.general_disable_trophy_popup);
+    SubscribeHelpText(ui->currentFontsPath, helptexts.settings.paths_fontsDir);
+    SubscribeHelpText(ui->browseFontsButton, helptexts.settings.paths_fontsDir_browse);
 
     PopulateComboBoxes();
     PathTabConnections();
@@ -289,6 +291,20 @@ void SettingsDialog::PathTabConnections() {
         auto file_path = Common::FS::PathFromQString(sysmodules_path_string);
         if (!file_path.empty()) {
             ui->currentSysmodulesPath->setText(sysmodules_path_string);
+        }
+    });
+    // -----------Fonts Folder --------------------------------------------------------------
+    connect(ui->browseFontsButton, &QPushButton::clicked, this, [this]() {
+        const auto fonts_path = m_emu_settings->GetFontsDir();
+        QString initial_path;
+        Common::FS::PathToQString(initial_path, fonts_path);
+
+        QString fonts_path_string = QFileDialog::getExistingDirectory(
+            this, tr("Select directory for System fonts"), initial_path);
+
+        auto file_path = Common::FS::PathFromQString(fonts_path_string);
+        if (!file_path.empty()) {
+            ui->currentFontsPath->setText(fonts_path_string);
         }
     });
 }
@@ -517,6 +533,11 @@ void SettingsDialog::LoadValuesFromConfig() {
     QString sysmodules_path_string;
     Common::FS::PathToQString(sysmodules_path_string, sysmodules_path);
     ui->currentSysmodulesPath->setText(sysmodules_path_string);
+    // ------------------ Fonts Folder--------------------------------------------------
+    const auto fonts_path = m_emu_settings->GetFontsDir();
+    QString fonts_path_string;
+    Common::FS::PathToQString(fonts_path_string, fonts_path);
+    ui->currentFontsPath->setText(fonts_path_string);
     // ----------GUI Settings --------------------------------------
     ui->ScanDepthComboBox->setCurrentIndex(
         m_gui_settings->GetValue(GUI::general_directory_depth_scanning).toInt() - 1);
@@ -669,6 +690,7 @@ void SettingsDialog::ApplyValuesToBackend() {
     m_emu_settings->SetHomeDir(Common::FS::PathFromQString(ui->currentHomePath->text()));
     m_emu_settings->SetSysModulesDir(
         Common::FS::PathFromQString(ui->currentSysmodulesPath->text()));
+    m_emu_settings->SetFontsDir(Common::FS::PathFromQString(ui->currentFontsPath->text()));
 }
 
 // ---------------------------- Button box handling ----------------------------

@@ -1791,6 +1791,33 @@
           </layout>
          </widget>
         </item>
+		<item>
+         <widget class="QGroupBox" name="fontsGroupBox">
+          <property name="title">
+           <string>PS4 Fonts Path</string>
+          </property>
+          <layout class="QVBoxLayout" name="dlcFolderGroupBox_5">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_19">
+             <item>
+              <widget class="QLineEdit" name="currentFontsPath">
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="browseFontsButton">
+               <property name="text">
+                <string>Browse</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>

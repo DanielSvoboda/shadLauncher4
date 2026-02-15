@@ -1874,6 +1874,13 @@
                  </property>
                 </widget>
                </item>
+			   <item>
+                <widget class="QCheckBox" name="identicalLogGroupedCheckbox">
+                 <property name="text">
+                  <string>Identical Log Grouped</string>
+                 </property>
+                </widget>
+               </item>
                <item>
                 <widget class="QPushButton" name="OpenLogLocationButton">
                  <property name="text">

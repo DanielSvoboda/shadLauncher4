@@ -459,6 +459,7 @@ void SettingsDialog::LoadValuesFromConfig() {
     ui->logFilterLineEdit->setText(QString::fromStdString(m_emu_settings->GetLogFilter()));
     ui->enableLoggingCheckBox->setChecked(m_emu_settings->IsLogEnabled());
     ui->separateLogFilesCheckbox->setChecked(m_emu_settings->IsSeparateLoggingEnabled());
+    ui->identicalLogGroupedCheckbox->setChecked(m_emu_settings->IsIdenticalLogGrouped());
 
     std::string logType = m_emu_settings->GetLogType();
     QString translatedText_LogType = logTypeMap.key(QString::fromStdString(logType));
@@ -645,6 +646,7 @@ void SettingsDialog::ApplyValuesToBackend() {
     m_emu_settings->SetLogFilter(ui->logFilterLineEdit->text().toStdString());
     m_emu_settings->SetLogEnabled(ui->enableLoggingCheckBox->isChecked());
     m_emu_settings->SetSeparateLoggingEnabled(ui->separateLogFilesCheckbox->isChecked());
+    m_emu_settings->SetIdenticalLogGrouped(ui->identicalLogGroupedCheckbox->isChecked());
     m_emu_settings->SetLogType(logTypeMap.value(ui->logTypeComboBox->currentText()).toStdString());
 
     // ------------------ Debug tab --------------------------------------------------------
@@ -975,6 +977,7 @@ void SettingsDialog::MapUIControls() {
 
     // Debug Settings
     m_uiSettingMap[ui->separateLogFilesCheckbox] = {"separate_logging_enabled", "Debug"};
+    m_uiSettingMap[ui->identicalLogGroupedCheckbox] = {"identical_log_grouped", "General"};
     m_uiSettingMap[ui->debugDump] = {"debug_dump", "Debug"};
     m_uiSettingMap[ui->collectShaderCheckBox] = {"shader_collect", "Debug"};
     m_uiSettingMap[ui->enableLoggingCheckBox] = {"log_enabled", "Debug"};

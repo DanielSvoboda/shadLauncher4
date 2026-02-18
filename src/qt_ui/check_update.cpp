@@ -456,7 +456,7 @@ void CheckUpdate::Install() {
         "Remove-Item -Force -LiteralPath '%3\\update.ps1'\n"
         "Remove-Item -Force -LiteralPath '%3\\temp_download_update.zip'\n"
         "Remove-Item -Recurse -Force '%2'\n"
-        "Start-Process -FilePath '%3\\shadPS4QtLauncher.exe' "
+        "Start-Process -FilePath '%3\\shadLauncher4.exe' "
         "-WorkingDirectory ([WildcardPattern]::Escape('%3'))\n");
     arguments << "-ExecutionPolicy"
               << "Bypass"
@@ -514,17 +514,17 @@ void CheckUpdate::Install() {
         "    sleep 2\n"
         "    extract_file\n"
         "    sleep 2\n"
-        "    if pgrep -f \"shadPS4QtLauncher-qt.AppImage\" > /dev/null; then\n"
-        "        pkill -f \"shadPS4QtLauncher-qt.AppImage\"\n"
+        "    if pgrep -f \"shadLauncher4-qt.AppImage\" > /dev/null; then\n"
+        "        pkill -f \"shadLauncher4-qt.AppImage\"\n"
         "        sleep 2\n"
         "    fi\n"
         "    cp -r \"%2/\"* \"%3/\"\n"
         "    sleep 2\n"
         "    rm \"%3/update.sh\"\n"
         "    rm \"%3/temp_download_update.zip\"\n"
-        "    chmod +x \"%3/shadPS4QtLauncher-qt.AppImage\"\n"
+        "    chmod +x \"%3/shadLauncher4-qt.AppImage\"\n"
         "    rm -r \"%2\"\n"
-        "    cd \"%3\" && ./shadPS4QtLauncher-qt.AppImage\n"
+        "    cd \"%3\" && ./shadLauncher4-qt.AppImage\n"
         "}\n"
         "main\n");
     arguments << scriptFileName;
@@ -554,11 +554,11 @@ void CheckUpdate::Install() {
         "sleep 2\n"
         "unzip -o \"%2/temp_download_update.zip\" -d \"%2/\"\n"
         "sleep 2\n"
-        "tar -xzf \"%2/shadPS4QtLauncher-macos-qt.tar.gz\" -C \"%3\"\n"
+        "tar -xzf \"%2/shadLauncher4-macos-qt.tar.gz\" -C \"%3\"\n"
         "sleep 2\n"
         "rm \"%3/update.sh\"\n"
         "chmod +x \"%3/shadps4.app/Contents/MacOS/shadps4\"\n"
-        "open \"%3/shadPS4QtLauncher.app\"\n"
+        "open \"%3/shadLauncher4.app\"\n"
         "rm -r \"%2\"\n");
 
     arguments << scriptFileName;

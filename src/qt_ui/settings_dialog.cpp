@@ -14,9 +14,9 @@
 #include "gui_application.h"
 #include "gui_settings.h"
 #include "log_presets_dialog.h"
-// #ifdef ENABLE_UPDATER
+#ifdef ENABLE_UPDATER
 #include "qt_ui/check_update.h"
-// #endif
+#endif
 #include "settings_dialog.h"
 #include "settings_dialog_helper_texts.h"
 #include "ui_settings_dialog.h"
@@ -338,10 +338,14 @@ void SettingsDialog::OtherConnections() {
     connect(ui->BGMVolumeSlider, &QSlider::valueChanged, this,
             [](int value) { BackgroundMusicPlayer::getInstance().SetVolume(value); });
 
+#ifdef ENABLE_UPDATER
     connect(ui->checkUpdateButton, &QPushButton::clicked, this, [this]() {
         auto checkUpdate = new CheckUpdate(m_gui_settings, true);
         checkUpdate->exec();
     });
+#else
+    ui->updaterGroupBox->setVisible(false);
+#endif
 
     // ------------------ Graphics tab --------------------------------------------------------
     connect(ui->RCASSlider, &QSlider::valueChanged, [this](int value) {
@@ -419,12 +423,14 @@ void SettingsDialog::LoadValuesFromConfig() {
         m_gui_settings->GetValue(GUI::game_list_backgroundImageOpacity).toInt());
     ui->checkCompatibilityOnStartupCheckBox->setChecked(
         m_gui_settings->GetValue(GUI::compatibility_check_on_startup).toBool());
+    ui->separateUpdateCheckBox->setChecked(
+        m_gui_settings->GetValue(GUI::general_separate_update_folder).toBool());
+#ifdef ENABLE_UPDATER
     ui->updaterCheckBox->setChecked(
         m_gui_settings->GetValue(GUI::general_check_gui_updates).toBool());
     ui->changelogCheckBox->setChecked(
         m_gui_settings->GetValue(GUI::general_show_changelog).toBool());
-    ui->separateUpdateCheckBox->setChecked(
-        m_gui_settings->GetValue(GUI::general_separate_update_folder).toBool());
+#endif
 
     // ------------------ Graphics tab --------------------------------------------------------
     // First options is auto selection -1, so gpuId on the GUI will always have to subtract 1
@@ -617,10 +623,12 @@ void SettingsDialog::ApplyValuesToBackend() {
                              ui->backgroundImageOpacitySlider->value());
     m_gui_settings->SetValue(GUI::compatibility_check_on_startup,
                              ui->checkCompatibilityOnStartupCheckBox->isChecked());
-    m_gui_settings->SetValue(GUI::general_show_changelog, ui->changelogCheckBox->isChecked());
-    m_gui_settings->SetValue(GUI::general_check_gui_updates, ui->updaterCheckBox->isChecked());
     m_gui_settings->SetValue(GUI::general_separate_update_folder,
                              ui->separateUpdateCheckBox->isChecked());
+#ifdef ENABLE_UPDATER
+    m_gui_settings->SetValue(GUI::general_show_changelog, ui->changelogCheckBox->isChecked());
+    m_gui_settings->SetValue(GUI::general_check_gui_updates, ui->updaterCheckBox->isChecked());
+#endif
 
     // ------------------ Graphics tab --------------------------------------------------------
     bool isFullscreen = ui->displayModeComboBox->currentText() != tr("Windowed");

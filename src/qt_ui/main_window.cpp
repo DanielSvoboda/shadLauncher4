@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <QtConcurrent>
+#include <common/scm_rev.h>
 #include <common/string_util.h>
 #include <common/versions.h>
 #include <core/file_format/pkg.h>
@@ -24,6 +25,9 @@
 #include "pkg_install_dir_select_dialog.h"
 #include "pkg_install_model.h"
 #include "progress_dialog.h"
+#ifdef ENABLE_UPDATER
+#include "qt_ui/check_update.h"
+#endif
 #include "settings_dialog.h"
 #include "ui_main_window.h"
 #include "user_manager_dialog.h"
@@ -61,7 +65,13 @@ bool MainWindow::init() {
     createConnects();
 
     setMinimumSize(350, minimumSizeHint().height()); // seems fine on win 10
-    setWindowTitle(QString("shadLauncher4 %1").arg(APP_VERSION));
+
+    // TODO: Adjust name for local builds
+    if (Common::g_is_release) {
+        setWindowTitle(QString("shadLauncher4 %1").arg(APP_VERSION));
+    } else {
+        setWindowTitle(QString("%1").arg(APP_VERSION));
+    }
 
     Q_EMIT RequestGlobalStylesheetChange();
     configureGuiFromSettings();
@@ -69,12 +79,6 @@ bool MainWindow::init() {
     // Refresh gamelist last
     m_game_list_frame->Refresh(true);
     m_game_list_frame->CheckCompatibilityAtStartup();
-
-    LoadVersionComboBox();
-    if (m_gui_settings->GetValue(GUI::version_manager_checkOnStartup).toBool()) {
-        auto versionDialog = new VersionDialog(m_gui_settings, this);
-        versionDialog->checkUpdatePre(false);
-    }
 
     // Expandable spacer to push elements to the right (Version Manager)
     QWidget* expandingSpacer = new QWidget(this);
@@ -89,6 +93,20 @@ bool MainWindow::init() {
     ui->toolBar->addWidget(versionContainer);
     LoadVersionComboBox();
     show();
+
+    // Check Update Emu
+    if (m_gui_settings->GetValue(GUI::version_manager_checkOnStartup).toBool()) {
+        auto versionDialog = new VersionDialog(m_gui_settings, this);
+        versionDialog->checkUpdatePre(false);
+    }
+
+    // Check Update Gui
+#ifdef ENABLE_UPDATER
+    if (m_gui_settings->GetValue(GUI::general_check_gui_updates).toBool()) {
+        auto* checkUpdate = new CheckUpdate(m_gui_settings, false, this);
+        checkUpdate->exec();
+    }
+#endif
 
     return true;
 }
@@ -316,6 +334,15 @@ void MainWindow::createConnects() {
 
     connect(m_ipc_client.get(), &IpcClient::LogEntrySent, m_game_list_frame,
             &GameListFrame::PrintLog);
+
+#ifdef ENABLE_UPDATER
+    connect(ui->updaterAct, &QAction::triggered, this, [this] {
+        auto* checkUpdate = new CheckUpdate(m_gui_settings, true, this);
+        checkUpdate->exec();
+    });
+#else
+    ui->updaterAct->setVisible(false);
+#endif
 }
 
 void MainWindow::LoadVersionComboBox() {

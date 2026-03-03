@@ -22,7 +22,8 @@ set(APP_IS_RELEASE false)
 
 option(ENABLE_UPDATER "Enables the options to updater" ON)
 
-if(NOT GIT_REMOTE_URL_LOWER MATCHES "shadLaunchers/shadLauncher4" OR NOT GIT_BRANCH STREQUAL "main")
+string(TOLOWER "${GIT_REMOTE_URL}" GIT_REMOTE_URL_LOWER)
+if(NOT GIT_REMOTE_URL_LOWER MATCHES "shadlaunchers/shadlauncher4" OR NOT GIT_BRANCH STREQUAL "main")
     message(STATUS "not main, disabling auto update")
     set(ENABLE_UPDATER OFF)
 endif()
